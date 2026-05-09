@@ -1,0 +1,392 @@
+{
+  "id": "5aa224d0-fa3c-4303-a1d4-138bb23537b3",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "version": "8",
+  "dialect": "postgres",
+  "ddl": [
+    {
+      "isRlsEnabled": false,
+      "name": "customers",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "customers_pkey",
+      "schema": "public",
+      "table": "customers",
+      "entityType": "pks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "name": "customers_id_seq",
+        "type": "always",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "increment": "1",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "id",
+      "schema": "public",
+      "table": "customers",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "schema": "public",
+      "table": "customers",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "email",
+      "schema": "public",
+      "table": "customers",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "city",
+      "schema": "public",
+      "table": "customers",
+      "entityType": "columns"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "joined",
+      "schema": "public",
+      "table": "customers",
+      "entityType": "columns"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "posts",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "posts_pkey",
+      "schema": "public",
+      "table": "posts",
+      "entityType": "pks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "name": "posts_id_seq",
+        "type": "always",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "increment": "1",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "id",
+      "schema": "public",
+      "table": "posts",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "title",
+      "schema": "public",
+      "table": "posts",
+      "entityType": "columns"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "content",
+      "schema": "public",
+      "table": "posts",
+      "entityType": "columns"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "products",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "products_pkey",
+      "schema": "public",
+      "table": "products",
+      "entityType": "pks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "name": "products_id_seq",
+        "type": "always",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "increment": "1",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "id",
+      "schema": "public",
+      "table": "products",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "schema": "public",
+      "table": "products",
+      "entityType": "columns"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "category",
+      "schema": "public",
+      "table": "products",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(10,2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "price",
+      "schema": "public",
+      "table": "products",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "stock",
+      "schema": "public",
+      "table": "products",
+      "entityType": "columns"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "purchases",
+      "schema": "public",
+      "entityType": "tables"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "purchases_pkey",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "pks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "name": "purchases_id_seq",
+        "type": "always",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "increment": "1",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "id",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "customer_id",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "product_id",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "columns"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quantity",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "columns"
+    },
+    {
+      "type": "numeric(10,2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "total",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "columns"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "purchased_at",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "columns"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "customer_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "customers",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "purchases_customer_id_customers_id_fk",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "fks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "product_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "products",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "purchases_product_id_products_id_fk",
+      "schema": "public",
+      "table": "purchases",
+      "entityType": "fks"
+    }
+  ],
+  "renames": []
+}
