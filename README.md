@@ -17,7 +17,7 @@ nvm use          # reads .nvmrc
 
 ### Netlify CLI
 
-The Vite dev server starts the local Postgres database in-process (see "Run the app" below), but the `db:*` scripts (apply migrations, reset, studio) shell out to the Netlify CLI, so install it once:
+The Vite dev server starts the local Postgres database in-process (see "First-time setup" below), but the `db:*` scripts (apply migrations, reset, studio) shell out to the Netlify CLI, so install it once:
 
 ```bash
 npm install -g netlify-cli
@@ -32,33 +32,26 @@ OPENAI_API_KEY=...
 GEMINI_API_KEY=...
 ```
 
-## Setup
+## First-time setup
+
+Three steps. The DB needs to be migrated before you open the app — otherwise the first page load hits `Error: relation "purchases" does not exist`.
+
+### 1. Install dependencies
 
 ```bash
 pnpm install     # also compiles the isolated-vm native addon
 ```
 
-That's all the project itself needs. The next step (one-time, after a fresh clone) sets up the local database — see below.
+### 2. Apply the schema and seed data
 
-## Run the app
+The Vite plugin starts the local Postgres-compatible database in-process when you run `pnpm dev`, so the dev server has to be up first. Migrations don't auto-apply locally — you trigger them yourself:
 
 ```bash
+# terminal 1 — boots Vite + the local Postgres
 pnpm dev
-```
 
-Open [http://localhost:3000/](http://localhost:3000/).
-
-That's it — the Vite plugin (`@netlify/vite-plugin-tanstack-start`) starts the local Postgres-compatible database in-process and exposes it to your code as `NETLIFY_DB_URL`, so `getDatabase()` from `@netlify/database` works directly inside TanStack Start route server handlers.
-
-> **Why `pnpm dev` doesn't need `netlify dev` here.** The `dev` script sets `EXPERIMENTAL_NETLIFY_DB_ENABLED=1` before invoking Vite. That flag is read by `@netlify/dev` (which the Vite plugin wraps) and turns on the database feature. Without it, the Vite plugin emulates everything *else* (aiGateway, blobs, functions, etc.) but skips the DB, and `getDatabase()` would throw `MissingDatabaseConnectionError`. You can still run `netlify dev` if you want the full proxy at `localhost:8888`, but it isn't required for the database to work.
-
-### First-run database setup
-
-Migrations don't auto-apply locally — you control when they run. With `pnpm dev` running in another terminal (so the local Postgres is up), apply the schema and seed once:
-
-```bash
-# terminal 2
-pnpm db:apply        # = netlify database migrations apply
+# terminal 2 — applies the schema and seed
+pnpm db:apply
 ```
 
 That applies, in order:
@@ -66,7 +59,23 @@ That applies, in order:
 1. `netlify/database/migrations/20250415162953_initial_schema/migration.sql` — `customers`, `products`, `purchases`, `posts`
 2. `netlify/database/migrations/20250415162954_seed_data/migration.sql` — 35 customers, 20 products, 550 purchases (identity sequences re-synced via `setval`)
 
-Other database scripts:
+The DB persists on disk under `.netlify/db/`, so step 2's `pnpm db:apply` is only needed once per fresh clone or after `pnpm db:reset`.
+
+### 3. Open the app
+
+[http://localhost:3000/](http://localhost:3000/)
+
+> **Why `pnpm dev` doesn't need `netlify dev` here.** The `dev` script sets `EXPERIMENTAL_NETLIFY_DB_ENABLED=1` before invoking Vite. That flag is read by `@netlify/dev` (which the Vite plugin wraps) and turns on the database feature. Without it, the Vite plugin emulates everything *else* (aiGateway, blobs, functions, etc.) but skips the DB, and `getDatabase()` would throw `MissingDatabaseConnectionError`. You can still run `netlify dev` if you want the full proxy at `localhost:8888`, but it isn't required for the database to work.
+
+## Day-to-day
+
+```bash
+pnpm dev
+```
+
+The seed data persists across restarts; you only need step 2 above again after `pnpm db:reset` or a fresh clone.
+
+## Database scripts
 
 | Script | What it runs | When you need it |
 |--------|--------------|------------------|

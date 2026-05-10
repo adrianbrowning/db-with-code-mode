@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:studio": "netlify dev:exec drizzle-kit studio",
+    "db:studio": "drizzle-kit studio",
     "db:apply": "netlify database migrations apply",
     "db:reset": "netlify database reset",
     "db:status": "netlify database status"
