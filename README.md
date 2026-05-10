@@ -34,7 +34,7 @@ GEMINI_API_KEY=...
 
 ## First-time setup
 
-Three steps. The DB needs to be migrated before you open the app — otherwise the first page load hits `Error: relation "purchases" does not exist`.
+Four steps. The DB needs to be migrated *and* seeded before you open the app — otherwise the first page load hits `Error: relation "purchases" does not exist` or returns an empty result set.
 
 ### 1. Install dependencies
 
@@ -42,26 +42,30 @@ Three steps. The DB needs to be migrated before you open the app — otherwise t
 pnpm install     # also compiles the isolated-vm native addon
 ```
 
-### 2. Apply the schema and seed data
-
-The Vite plugin starts the local Postgres-compatible database in-process when you run `pnpm dev`, so the dev server has to be up first. Migrations don't auto-apply locally — you trigger them yourself:
+### 2. Boot the local DB
 
 ```bash
 # terminal 1 — boots Vite + the local Postgres
 pnpm dev
-
-# terminal 2 — applies the schema and seed
-pnpm db:apply
 ```
 
-That applies, in order:
+The Vite plugin starts the local Postgres-compatible database in-process and writes its connection string to `.netlify/state.json#dbConnectionString`. Both `pnpm db:apply` and `pnpm db:seed` (and `drizzle-kit`) read from there, so this terminal stays up.
 
-1. `netlify/database/migrations/20250415162953_initial_schema/migration.sql` — `customers`, `products`, `purchases`, `posts`
-2. `netlify/database/migrations/20250415162954_seed_data/migration.sql` — 35 customers, 20 products, 550 purchases (identity sequences re-synced via `setval`)
+### 3. Apply the schema migration, then seed demo data
 
-The DB persists on disk under `.netlify/db/`, so step 2's `pnpm db:apply` is only needed once per fresh clone or after `pnpm db:reset`.
+```bash
+# terminal 2
+pnpm db:apply    # runs netlify/database/migrations/<timestamp>_initial_schema/migration.sql
+pnpm db:seed     # runs db/seed.ts → 35 customers, 20 products, 550 purchases
+```
 
-### 3. Open the app
+`db:apply` only contains the schema (DDL). The demo dataset lives in `db/seed-data.ts` and is loaded by `db/seed.ts`, which `TRUNCATE … RESTART IDENTITY`s the three tables before re-inserting, so it's safe to re-run any time.
+
+The DB persists on disk under `.netlify/db/`, so step 3 is only needed again after `pnpm db:reset` (or you change the seed and want it back in).
+
+> **Tip — peek at the data before the app.** Run `pnpm db:studio` in terminal 2 to open [https://local.drizzle.studio](https://local.drizzle.studio) connected to the local DB. Useful when demoing — show the tables, then open the app. Ctrl+C Studio when you're done. (If it errors with `EADDRINUSE: 127.0.0.1:4983`, an old Studio is still running — `lsof -ti:4983 | xargs kill` and retry.)
+
+### 4. Open the app
 
 [http://localhost:3000/](http://localhost:3000/)
 
@@ -73,17 +77,18 @@ The DB persists on disk under `.netlify/db/`, so step 2's `pnpm db:apply` is onl
 pnpm dev
 ```
 
-The seed data persists across restarts; you only need step 2 above again after `pnpm db:reset` or a fresh clone.
+The seed data persists across restarts; you only need step 3 above again after `pnpm db:reset` or a fresh clone.
 
 ## Database scripts
 
 | Script | What it runs | When you need it |
 |--------|--------------|------------------|
 | `pnpm db:status`   | `netlify database status` | See applied vs pending migrations and the local DB connection string |
-| `pnpm db:apply`    | `netlify database migrations apply` | Apply pending migrations to the running local DB |
-| `pnpm db:reset`    | `netlify database reset` | Drop everything in the local DB and start over (then `db:apply` again) |
-| `pnpm db:generate` | `drizzle-kit generate` | Regenerate a schema migration from `db/schema.ts` after edits (see note below) |
-| `pnpm db:studio`   | `netlify dev:exec drizzle-kit studio` | Open Drizzle Studio against the local DB |
+| `pnpm db:apply`    | `netlify database migrations apply` | Apply pending schema migrations to the running local DB |
+| `pnpm db:seed`     | `tsx db/seed.ts` | Re-seed the demo data (truncates `customers`, `products`, `purchases` first, then re-inserts from `db/seed-data.ts`) |
+| `pnpm db:reset`    | `netlify database reset` | Drop everything in the local DB and start over (then `db:apply` + `db:seed` again) |
+| `pnpm db:generate` | `drizzle-kit generate` | Regenerate a schema migration from `db/schema.ts` after edits |
+| `pnpm db:studio`   | `drizzle-kit studio` | Open Drizzle Studio against the local DB (uses the connection string in `.netlify/state.json`) |
 
 Inspect the DB directly while `pnpm dev` (or `netlify dev`) is running:
 
@@ -93,7 +98,33 @@ netlify database connect --query "SELECT count(*) FROM purchases"
 netlify database connect --json                               # connection details for psql / TablePlus / etc.
 ```
 
-> **Future migrations — naming caveat.** `drizzle-kit generate` emits flat files like `0000_xxx.sql` into `netlify/database/migrations/`. Netlify's migration runner instead expects directories named `<YYYYMMDDHHMMSS>_<description>/migration.sql`. After running `pnpm db:generate`, move the generated `.sql` file into a timestamped directory before committing — or use `netlify database migrations new --description "..."` to create the wrapper directory and paste the SQL into its `migration.sql`.
+### Day-to-day reset cycle
+
+```bash
+pnpm db:reset && pnpm db:apply && pnpm db:seed
+```
+
+### Editing the schema
+
+`pnpm db:generate` (drizzle-kit beta.21+) emits a directory of the form `netlify/database/migrations/<YYYYMMDDHHMMSS>_<description>/migration.sql` plus a sibling `snapshot.json` — exactly the shape Netlify's migration runner wants, so no manual move is needed. After regenerating, run `pnpm db:apply` to apply the new migration, and `pnpm db:seed` again if any of the seeded columns changed.
+
+### Rebuilding from absolute zero (sanity check)
+
+To validate that `db/schema.ts` is the true source of truth — i.e. you can throw away everything else and the pipeline rebuilds itself — wipe both the committed migration and the persisted DB, then walk through the full loop:
+
+```bash
+rm -rf netlify/database/migrations    # toss the committed schema migration
+rm -rf .netlify                       # toss the persisted Postgres data + state.json
+
+pnpm dev                              # terminal 1
+pnpm db:generate                      # terminal 2 — drizzle-kit reads db/schema.ts and writes a fresh <timestamp>_<name>/migration.sql
+pnpm db:apply                         # apply that migration
+pnpm db:seed                          # load demo data
+pnpm db:studio                        # optional — eyeball the data before opening the app
+# http://localhost:3000
+```
+
+The regenerated migration is byte-identical SQL to the one this repo ships with — only the timestamp and the snapshot UUID differ. After confirming the app works end-to-end, either commit the new migration or `git checkout` to restore the original. Don't leave the repo in a "no migrations committed" state — production deploys need that file.
 
 ## Building For Production
 
