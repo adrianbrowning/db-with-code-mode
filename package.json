@@ -15,7 +15,8 @@
     "db:apply": "netlify database migrations apply",
     "db:reset": "netlify database reset",
     "db:status": "netlify database status",
-    "db:seed": "tsx db/seed.ts"
+    "db:seed": "tsx db/seed.ts",
+    "db:seed:migration": "tsx db/generate-seed-migration.ts"
   },
   "dependencies": {
     "@netlify/database": "^1.0.0",
