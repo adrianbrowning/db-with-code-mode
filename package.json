@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "EXPERIMENTAL_NETLIFY_DB_ENABLED=1 vite dev --port 3000",
+    "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
