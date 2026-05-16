@@ -5,9 +5,10 @@ import {
   type ToolBinding,
   type ToolExecutionContext,
 } from '@tanstack/ai-code-mode'
-import type { UIEvent, ComponentType, WatcherSubscription } from './types'
+import type { UIEvent, ComponentType, WatcherSubscription, Report } from './types'
 import {
   applyReportUIEvent,
+  createReportState,
   getSignalRegistry,
   addWatcher,
   removeWatcher,
@@ -1326,6 +1327,32 @@ export const reportBindings: Record<string, ToolBinding> = {
   external_list_watchers: listWatchersBinding,
 }
 
+const newReportBinding: ToolBinding = {
+  name: 'external_new_report',
+  description: 'Create a new report and open it in the UI. Must be called before adding report components.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', description: 'Unique identifier for the report (snake_case recommended)' },
+      title: { type: 'string', description: 'Display title shown at the top of the report' },
+    },
+    required: ['id', 'title'],
+  },
+  execute: async (args: unknown, context?: ToolExecutionContext) => {
+    const { id, title } = args as { id: string; title: string }
+    const report: Report = {
+      id,
+      title,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+    createReportState(report)
+    const emitCustomEvent = context?.emitCustomEvent || (() => {})
+    emitCustomEvent('report:created', { report, autoSelect: true })
+    return { success: true, reportId: id }
+  },
+}
+
 /**
  * Create report bindings function for use with getSkillBindings
  * Returns a fresh copy of the bindings record
@@ -1333,5 +1360,6 @@ export const reportBindings: Record<string, ToolBinding> = {
 export function createReportBindings(): Record<string, ToolBinding> {
   return {
     ...reportBindings,
+    external_new_report: newReportBinding,
   }
 }

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportingApiSkillsRouteImport } from './routes/_reporting/api.skills'
 import { Route as ReportingApiReportsRouteImport } from './routes/_reporting/api.reports'
 import { Route as ReportingApiReportSseRouteImport } from './routes/_reporting/api.report-sse'
 import { Route as ReportingApiReportEventRouteImport } from './routes/_reporting/api.report-event'
@@ -18,6 +19,11 @@ import { Route as ReportingApiInvalidateRouteImport } from './routes/_reporting/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportingApiSkillsRoute = ReportingApiSkillsRouteImport.update({
+  id: '/_reporting/api/skills',
+  path: '/api/skills',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportingApiReportsRoute = ReportingApiReportsRouteImport.update({
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/api/report-event': typeof ReportingApiReportEventRoute
   '/api/report-sse': typeof ReportingApiReportSseRoute
   '/api/reports': typeof ReportingApiReportsRoute
+  '/api/skills': typeof ReportingApiSkillsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/api/report-event': typeof ReportingApiReportEventRoute
   '/api/report-sse': typeof ReportingApiReportSseRoute
   '/api/reports': typeof ReportingApiReportsRoute
+  '/api/skills': typeof ReportingApiSkillsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +70,7 @@ export interface FileRoutesById {
   '/_reporting/api/report-event': typeof ReportingApiReportEventRoute
   '/_reporting/api/report-sse': typeof ReportingApiReportSseRoute
   '/_reporting/api/reports': typeof ReportingApiReportsRoute
+  '/_reporting/api/skills': typeof ReportingApiSkillsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,6 +80,7 @@ export interface FileRouteTypes {
     | '/api/report-event'
     | '/api/report-sse'
     | '/api/reports'
+    | '/api/skills'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -78,6 +88,7 @@ export interface FileRouteTypes {
     | '/api/report-event'
     | '/api/report-sse'
     | '/api/reports'
+    | '/api/skills'
   id:
     | '__root__'
     | '/'
@@ -85,6 +96,7 @@ export interface FileRouteTypes {
     | '/_reporting/api/report-event'
     | '/_reporting/api/report-sse'
     | '/_reporting/api/reports'
+    | '/_reporting/api/skills'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -93,6 +105,7 @@ export interface RootRouteChildren {
   ReportingApiReportEventRoute: typeof ReportingApiReportEventRoute
   ReportingApiReportSseRoute: typeof ReportingApiReportSseRoute
   ReportingApiReportsRoute: typeof ReportingApiReportsRoute
+  ReportingApiSkillsRoute: typeof ReportingApiSkillsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -102,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_reporting/api/skills': {
+      id: '/_reporting/api/skills'
+      path: '/api/skills'
+      fullPath: '/api/skills'
+      preLoaderRoute: typeof ReportingApiSkillsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_reporting/api/reports': {
@@ -141,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportingApiReportEventRoute: ReportingApiReportEventRoute,
   ReportingApiReportSseRoute: ReportingApiReportSseRoute,
   ReportingApiReportsRoute: ReportingApiReportsRoute,
+  ReportingApiSkillsRoute: ReportingApiSkillsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

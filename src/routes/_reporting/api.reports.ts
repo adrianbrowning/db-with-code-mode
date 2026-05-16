@@ -1,3 +1,5 @@
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createFileRoute } from '@tanstack/react-router'
 import {
   chat,
@@ -5,29 +7,27 @@ import {
   toServerSentEventsStream,
 } from '@tanstack/ai'
 import { createCodeMode } from '@tanstack/ai-code-mode'
-import { anthropicText } from '@tanstack/ai-anthropic'
-import { openaiText } from '@tanstack/ai-openai'
-import { geminiText } from '@tanstack/ai-gemini'
-import type { AnyTextAdapter } from '@tanstack/ai'
+import {
+  createAlwaysTrustedStrategy,
+  createSkillManagementTools,
+  createSkillsSystemPrompt,
+  skillToTool,
+} from '@tanstack/ai-code-mode-skills'
+import { createFileSkillStorage } from '@tanstack/ai-code-mode-skills/storage'
+import { toolsToBindings } from '@tanstack/ai-code-mode'
+import type { AnyTextAdapter, ServerTool } from '@tanstack/ai'
+import type { IsolateDriver } from '@tanstack/ai-code-mode'
 
 import { databaseTools } from '#/lib/tools/database-tools'
 import { reportTools } from '#/lib/reports/tools'
 import { createReportBindings } from '#/lib/reports/create-report-bindings'
+import { bedrockText } from '@tanstack/ai-bedrock'
+import type { BedrockTextModels } from '@tanstack/ai-bedrock'
 
-type Provider = 'anthropic' | 'openai' | 'gemini'
+const DEFAULT_MODEL = (process.env.BEDROCK_MODEL ?? 'us.anthropic.claude-sonnet-4-6-20250514-v1:0') as BedrockTextModels
 
-function getAdapter(provider: Provider, model?: string): AnyTextAdapter {
-  switch (provider) {
-    case 'openai':
-      return openaiText((model || 'gpt-4o') as 'gpt-4o')
-    case 'gemini':
-      return geminiText((model || 'gemini-2.5-flash') as 'gemini-2.5-flash')
-    case 'anthropic':
-    default:
-      return anthropicText(
-        (model || 'claude-haiku-4-5') as 'claude-haiku-4-5',
-      )
-  }
+function getAdapter(model?: string): AnyTextAdapter {
+  return bedrockText((model ?? DEFAULT_MODEL) as BedrockTextModels)
 }
 
 const DATABASE_SYSTEM_PROMPT = `You are a data analyst assistant with access to a Netlify Database (Postgres) containing three tables: customers, products, and purchases.
@@ -158,6 +158,7 @@ return { categoriesAnalyzed: Object.keys(categoryTotals).length }
 let codeModeCache: {
   tool: ReturnType<typeof createCodeMode>['tool']
   systemPrompt: string
+  driver: IsolateDriver
 } | null = null
 
 async function getCodeModeTools() {
@@ -171,17 +172,76 @@ async function getCodeModeTools() {
       memoryLimit: 128,
       getSkillBindings: async () => createReportBindings(),
     })
-    codeModeCache = { tool, systemPrompt }
+    codeModeCache = { tool, systemPrompt, driver }
   }
   return codeModeCache
+}
+
+// --- Skills setup ---
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
+const skillsDir = resolve(__dirname, '../../../.skills')
+const trustStrategy = createAlwaysTrustedStrategy()
+export const skillStorage = createFileSkillStorage({ directory: skillsDir, trustStrategy })
+
+let skillManagementToolsCache: ReturnType<typeof createSkillManagementTools> | null = null
+
+function getSkillManagementTools() {
+  if (!skillManagementToolsCache) {
+    skillManagementToolsCache = createSkillManagementTools({ storage: skillStorage, trustStrategy })
+  }
+  return skillManagementToolsCache
+}
+
+const SKILL_REGISTRATION_PROMPT = `## Skill Registration — MANDATORY
+
+After every successful \`execute_typescript\` call you MUST register the code as a reusable skill using \`register_skill\` — unless an identical skill already exists.
+
+Rules:
+- \`name\`: descriptive snake_case (e.g. \`get_average_product_price\`)
+- \`code\`: the TypeScript code, parameterised with an \`input\` variable where useful
+- \`inputSchema\` / \`outputSchema\`: valid JSON Schema **strings**
+- If a skill with the same name exists, skip registration
+
+This is not optional — skill registration is a core part of your workflow.`
+
+async function getSkillToolsAndPrompt(driver: IsolateDriver): Promise<{
+  skillTools: Array<ServerTool<any, any, any>>
+  skillsPrompt: string
+}> {
+  const allSkills = await skillStorage.loadAll()
+  const skillIndex = await skillStorage.loadIndex()
+
+  const skillTools =
+    allSkills.length > 0
+      ? (() => {
+          const bindings = {
+            ...toolsToBindings(databaseTools, 'external_'),
+            ...createReportBindings(),
+          }
+          return allSkills.map((skill) =>
+            skillToTool({ skill, driver, bindings, storage: skillStorage, timeout: 60000, memoryLimit: 128 })
+          )
+        })()
+      : []
+
+  const libraryPrompt = createSkillsSystemPrompt({
+    selectedSkills: allSkills,
+    totalSkillCount: skillIndex.length,
+    skillsAsTools: true,
+  })
+
+  return { skillTools, skillsPrompt: libraryPrompt + '\n\n' + SKILL_REGISTRATION_PROMPT }
 }
 
 export const Route = createFileRoute('/_reporting/api/reports')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        console.log('[API Reports] POST /_reporting/api/reports')
         const requestSignal = request.signal
         if (requestSignal.aborted) {
+          console.log('[API Reports] Request aborted, returning 499')
           return new Response(null, { status: 499 })
         }
 
@@ -189,27 +249,36 @@ export const Route = createFileRoute('/_reporting/api/reports')({
         const body = await request.json()
         const { messages, data } = body
 
-        const provider: Provider = data?.provider || 'anthropic'
         const model: string | undefined = data?.model
 
-        const adapter = getAdapter(provider, model)
+        const adapter = getAdapter(model)
+
+        // console.log('[API Reports] Provider:', {
+        //   messages,
+        //   data,
+        //   provider,
+        //   model
+        // })
 
         try {
-          const { tool, systemPrompt } = await getCodeModeTools()
-
+          const { tool, systemPrompt, driver } = await getCodeModeTools()
+          const { skillTools, skillsPrompt } = await getSkillToolsAndPrompt(driver)
           const stream = chat({
             adapter,
             messages,
-            tools: [tool, ...reportTools],
+            tools: [tool, ...getSkillManagementTools(), ...skillTools, ...reportTools],
             systemPrompts: [
               DATABASE_SYSTEM_PROMPT,
               systemPrompt,
               REPORTS_SYSTEM_PROMPT,
+              skillsPrompt,
             ],
             agentLoopStrategy: maxIterations(20),
             abortController,
             maxTokens: 8192,
           })
+
+          console.log('[API Reports] Stream started | AWS_ACCESS_KEY_ID present:', !!process.env.AWS_ACCESS_KEY_ID)
 
           const sseStream = toServerSentEventsStream(stream, abortController)
 

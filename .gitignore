@@ -19,3 +19,14 @@ todos.json
 .db-skills
 
 deno.lock
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/jsLinters/eslint.xml
+/.idea/.gitignore
+/.idea/db-with-code-mode.iml
+/.idea/encodings.xml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/prettier.xml
+/.idea/vcs.xml
+/plan/bedrock-migration.jsonl
+/plan/cleanup-non-bedrock.jsonl

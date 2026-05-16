@@ -1,4 +1,4 @@
-import { createLogger, defineConfig } from 'vite'
+import { createLogger, defineConfig, loadEnv } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -76,21 +76,51 @@ const serverExternal = [
   '@jitl/quickjs-wasmfile-debug-sync',
 ]
 
-const config = defineConfig({
-  customLogger: quietLogger,
-  resolve: { tsconfigPaths: true },
-  environments: {
-    ssr: { resolve: { external: serverExternal } },
-    rsc: { resolve: { external: serverExternal } },
-  },
-  plugins: [
-    devtools(),
-    tailwindcss(),
-    tanstackStart({ rsc: { enabled: true } }),
-    rsc(),
-    netlifyPlugin(),
-    viteReact(),
-  ],
-})
+function injectEnvPlugin(env: Record<string, string>): import('vite').Plugin {
+  const VIRTUAL = 'virtual:server-env'
+  const RESOLVED = '\0' + VIRTUAL
+  const keys = [
+    'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_REGION',
+  ]
+  const code = keys
+    .map(k => `process.env[${JSON.stringify(k)}] = ${JSON.stringify(env[k] || process.env[k] || '')};`)
+    .join('\n')
+  return {
+    name: 'inject-server-env',
+    resolveId(id) { if (id === VIRTUAL) return RESOLVED },
+    load(id) { if (id === RESOLVED) return code },
+  }
+}
 
-export default config
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  Object.assign(process.env, env)
+  console.log('[vite.config] AWS_ACCESS_KEY_ID present:', !!(env.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID))
+
+  return {
+    customLogger: quietLogger,
+    resolve: { tsconfigPaths: true },
+    server: {
+      watch: {
+        ignored: ['**/.skills/**'],
+      },
+    },
+    environments: {
+      ssr: {
+        resolve: { external: serverExternal },
+      },
+      rsc: {
+        resolve: { external: serverExternal },
+      },
+    },
+    plugins: [
+      injectEnvPlugin(env),
+      devtools(),
+      tailwindcss(),
+      tanstackStart({ rsc: { enabled: true } }),
+      rsc(),
+      netlifyPlugin(),
+      viteReact(),
+    ],
+  }
+})

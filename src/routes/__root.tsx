@@ -1,8 +1,11 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import { NotFound } from '#/components/NotFound'
 
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
+  component: RootComponent,
+  notFoundComponent: NotFound,
   head: () => ({
     meta: [
       {
@@ -25,6 +28,10 @@ export const Route = createRootRoute({
   }),
   shellComponent: RootDocument,
 })
+
+function RootComponent() {
+  return <Outlet />
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (

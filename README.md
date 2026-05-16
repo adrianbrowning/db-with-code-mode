@@ -23,14 +23,19 @@ The Vite dev server starts the local Postgres database in-process (see "First-ti
 npm install -g netlify-cli
 ```
 
-### `.env.local` — at least one AI provider key
+### `.env.local` — AWS Bedrock configuration
 
 ```env
-ANTHROPIC_API_KEY=...
-# Optional, any of these also work as the model selector picks them up:
-OPENAI_API_KEY=...
-GEMINI_API_KEY=...
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+# Optional — only needed for temporary/session credentials:
+# AWS_SESSION_TOKEN=...
+# Optional — override the default model:
+# BEDROCK_MODEL=us.anthropic.claude-3-5-sonnet-20241022-v2:0
 ```
+
+See [BEDROCK_SETUP.md](./docs/BEDROCK_SETUP.md) for IAM setup and local dev credentials.
 
 ## First-time setup
 
@@ -185,7 +190,7 @@ netlify deploy --build --prod
 3. Apply every migration in `netlify/database/migrations/` against the production DB (look for the `Netlify Database setup` step in the build log).
 4. Publish the site.
 
-> **You don't need to set any env vars for this demo.** Netlify auto-injects `NETLIFY_DATABASE_URL` / `NETLIFY_DB_URL` for the database, and the **AI Gateway** auto-injects `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` (plus the matching `*_BASE_URL` so requests are proxied through Netlify's gateway, billed against the site's AI credits, and observable in the Netlify UI). The official Anthropic / OpenAI / Gemini SDKs that TanStack's `anthropicText` / `openaiText` / `geminiText` adapters wrap pick these up with zero extra configuration. Two caveats: AI Gateway requires at least one production deploy to activate (so the *very first* request after the *very first* deploy may need a retry), and any provider env var you set yourself with `netlify env:set` overrides the gateway-injected one — useful when you want to use your own key/billing in production.
+> **For production:** Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION` in the Netlify UI → Site Settings → Environment variables. Alternatively, configure an IAM role for the Netlify execution environment — see [BEDROCK_SETUP.md](./docs/BEDROCK_SETUP.md#production-deployment-netlify) for both options. Netlify auto-injects `NETLIFY_DATABASE_URL` / `NETLIFY_DB_URL` for the database with no extra configuration.
 
 ### 4. Seed the production database
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { ChevronDown, ChevronRight, Send, Sparkles, Square } from 'lucide-react'
+import { ChevronDown, ChevronRight, RefreshCw, Send, Sparkles, Square, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
@@ -28,7 +28,7 @@ export const Route = createFileRoute('/')({
   component: ReportingAgentPage,
 })
 
-type Provider = 'anthropic' | 'openai' | 'gemini'
+type Provider = 'bedrock'
 
 interface ModelOption {
   provider: Provider
@@ -37,18 +37,8 @@ interface ModelOption {
 }
 
 const MODEL_OPTIONS: Array<ModelOption> = [
-  {
-    provider: 'anthropic',
-    model: 'claude-haiku-4-5',
-    label: 'Claude Haiku 4.5',
-  },
-  {
-    provider: 'anthropic',
-    model: 'claude-haiku-4-20250514',
-    label: 'Claude Haiku 4',
-  },
-  { provider: 'openai', model: 'gpt-4o', label: 'GPT-4o' },
-  { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { provider: 'bedrock', model: 'us.anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5 (Bedrock)' },
+  { provider: 'bedrock', model: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0', label: 'Claude Sonnet 3.5 (Bedrock)' },
 ]
 
 const PROMPT_SUGGESTIONS = [
@@ -78,6 +68,121 @@ const PROMPT_SUGGESTIONS = [
       'Create a report breaking down sales by customer city with charts showing which cities generate the most revenue.',
   },
 ]
+
+type SkillWithCode = {
+  id: string
+  name: string
+  description: string
+  code: string
+  trustLevel: 'untrusted' | 'provisional' | 'trusted'
+  usageHints?: Array<string>
+  stats?: { executions: number; successRate: number }
+}
+
+function SkillsDialog({
+  open,
+  onClose,
+  skills,
+  onRefresh,
+  isLoading,
+}: {
+  open: boolean
+  onClose: () => void
+  skills: Array<SkillWithCode>
+  onRefresh: () => void
+  isLoading: boolean
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  if (!open) return null
+
+  const trustColors: Record<string, string> = {
+    untrusted: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+    provisional: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    trusted: 'bg-green-500/20 text-green-400 border-green-500/30',
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-2xl max-h-[80vh] flex flex-col bg-gray-900 border border-gray-700 rounded-xl shadow-2xl mx-4">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            <h2 className="font-semibold text-white">
+              Registered Skills
+              <span className="ml-2 text-sm text-gray-400 font-normal">({skills.length})</span>
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              disabled={isLoading}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors disabled:opacity-50"
+              title="Refresh skills"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          {skills.length === 0 ? (
+            <div className="py-12 text-center text-gray-500">
+              <Sparkles className="w-8 h-8 mx-auto mb-3 text-gray-600" />
+              <p className="text-sm font-medium">No skills registered yet</p>
+              <p className="text-xs mt-1 text-gray-600">
+                The AI will create reusable skills as it works.
+              </p>
+            </div>
+          ) : (
+            skills.map((skill) => {
+              const isExpanded = expandedId === skill.id
+              return (
+                <div key={skill.id} className="rounded-lg border border-gray-700 overflow-hidden">
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-gray-800/50 hover:bg-gray-800 transition-colors text-left"
+                    onClick={() => setExpandedId(isExpanded ? null : skill.id)}
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm font-mono text-purple-300">skill_{skill.name}</code>
+                        <span className={`text-xs px-1.5 py-0.5 rounded border ${trustColors[skill.trustLevel] ?? ''}`}>
+                          {skill.trustLevel}
+                        </span>
+                      </div>
+                      {skill.description && (
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{skill.description}</p>
+                      )}
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t border-gray-700 bg-gray-950">
+                      <pre className="p-4 text-xs text-gray-300 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed">
+                        {skill.code || '// No code available'}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function ToolCallDisplay({
   name,
@@ -450,6 +555,29 @@ function ReportingAgentPage() {
   >(new Map())
   const eventIdCounter = useRef(0)
 
+  const [skills, setSkills] = useState<Array<SkillWithCode>>([])
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false)
+  const [skillsDialogOpen, setSkillsDialogOpen] = useState(false)
+
+  const loadSkills = useCallback(async () => {
+    setIsLoadingSkills(true)
+    try {
+      const response = await fetch('/api/skills')
+      if (response.ok) {
+        const data = await response.json()
+        setSkills(data)
+      }
+    } catch (error) {
+      console.error('Failed to load skills:', error)
+    } finally {
+      setIsLoadingSkills(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSkills()
+  }, [loadSkills])
+
   const {
     reports,
     activeReportId,
@@ -459,7 +587,6 @@ function ReportingAgentPage() {
     deleteReport,
     dispatchUIEvent,
     clearAll: clearAllReports,
-    isHydrated,
   } = usePersistedReports()
 
   const hasActiveReport = activeReportId !== null
@@ -475,6 +602,11 @@ function ReportingAgentPage() {
   const handleCustomEvent = useCallback(
     (eventType: string, data: unknown, context: { toolCallId?: string }) => {
       const toolCallId = context.toolCallId
+
+      if (eventType === 'skill:registered') {
+        loadSkills()
+        return
+      }
 
       if (eventType === 'report:created') {
         const { report, autoSelect } = data as {
@@ -516,7 +648,7 @@ function ReportingAgentPage() {
         return newMap
       })
     },
-    [createReport, deleteReport, dispatchUIEvent],
+    [createReport, deleteReport, dispatchUIEvent, loadSkills],
   )
 
   const { messages, sendMessage, isLoading, stop } = useChat({
@@ -535,25 +667,34 @@ function ReportingAgentPage() {
           <Sparkles className="w-5 h-5 text-purple-400" />
           <h1 className="text-lg font-semibold text-white">Database Reports</h1>
         </div>
-        <select
-          value={MODEL_OPTIONS.findIndex(
-            (opt) =>
-              opt.provider === selectedModel.provider &&
-              opt.model === selectedModel.model,
-          )}
-          onChange={(e) => {
-            const option = MODEL_OPTIONS[parseInt(e.target.value)]
-            setSelectedModel(option)
-          }}
-          disabled={isLoading}
-          className="rounded-lg border border-purple-500/20 bg-gray-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
-        >
-          {MODEL_OPTIONS.map((option, index) => (
-            <option key={index} value={index}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSkillsDialogOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 rounded-lg transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            {skills.length} Skills
+          </button>
+          <select
+            value={MODEL_OPTIONS.findIndex(
+              (opt) =>
+                opt.provider === selectedModel.provider &&
+                opt.model === selectedModel.model,
+            )}
+            onChange={(e) => {
+              const option = MODEL_OPTIONS[parseInt(e.target.value)]
+              setSelectedModel(option)
+            }}
+            disabled={isLoading}
+            className="rounded-lg border border-purple-500/20 bg-gray-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+          >
+            {MODEL_OPTIONS.map((option, index) => (
+              <option key={index} value={index}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -646,6 +787,14 @@ function ReportingAgentPage() {
             </div>
           </div>
         </motion.div>
+
+        <SkillsDialog
+          open={skillsDialogOpen}
+          onClose={() => setSkillsDialogOpen(false)}
+          skills={skills}
+          onRefresh={loadSkills}
+          isLoading={isLoadingSkills}
+        />
 
         {/* Report Panel */}
         <AnimatePresence>
